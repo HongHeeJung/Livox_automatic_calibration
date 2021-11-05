@@ -114,20 +114,37 @@ int main()
     ifstream T_Mat_File("../data/T_Matrix.txt");
     Eigen::Matrix4f T_Matrix = Eigen::Matrix4f::Identity();
 
-    ifstream initFile("../data/Init_Matrix.txt");
+    // ifstream initFile("../data/Init_Matrix.txt");
 
-    Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
+    // Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
     Eigen::Matrix4f init_guess_0 = Eigen::Matrix4f::Identity();
 
-    for (int mat_i = 0; mat_i != 4; mat_i++)
-    {
-        for (int mat_j = 0; mat_j != 4; mat_j++)
-        {
-            initFile >> init_guess(mat_i, mat_j);
-        }
-    }
+    // for (int mat_i = 0; mat_i != 4; mat_i++)
+    // {
+    //     for (int mat_j = 0; mat_j != 4; mat_j++)
+    //     {
+    //         initFile >> init_guess(mat_i, mat_j);
+    //     }
+    // }
 
-    init_guess_0 = init_guess;
+
+    // 물리적으로 얻은 외부 파라미터 값을 초기 행렬로 만들어줘, pointcloud를 transform 해준다.	
+     Eigen::Translation3f init_translation(-0.054, 0.178, -0.002);
+     Eigen::AngleAxisf init_rotation_x( 0.37, Eigen::Vector3f::UnitX());
+     Eigen::AngleAxisf init_rotation_y(-0.4, Eigen::Vector3f::UnitY());
+     Eigen::AngleAxisf init_rotation_z(44.32, Eigen::Vector3f::UnitZ()); // 라디안으로 계산해준다.
+
+     Eigen::Matrix4f init_guess = (init_translation * init_rotation_x*init_rotation_y* init_rotation_z).matrix();
+     
+     init_guess_0 = init_guess;
+
+     
+     std::cout << "start" <<std::endl;
+     std::cout << "Init_guess: " <<std::endl;
+     std::cout << init_guess << std::endl; 
+    
+
+
     //================== Step.3 Reading L-LiDAR frames =====================//
 
     struct dirent **namelist;
@@ -227,14 +244,14 @@ int main()
 
         //std::cout << "Score: " << icp.getFitnessScore() << std::endl;
 
-        if (icp.getFitnessScore() > 1)
-        {
-            //std::cout<<"not match, skip this"<<std::endl;
-            init_guess = init_guess_0;
-            //continue;
-        }
-        else
-        {
+        // if (icp.getFitnessScore() > 1)
+        // {
+        //     //std::cout<<"not match, skip this"<<std::endl;
+        //     init_guess = init_guess_0;
+        //     //continue;
+        // }
+        // else
+        // {
             Eigen::Matrix4f Final_Calib_T = Eigen::Matrix4f::Identity();
 
             Final_Calib_T = Tiny_T * init_guess;
@@ -250,9 +267,11 @@ int main()
             const Eigen::Matrix<double, 3, 1> EulerAngle_T = EulerAngle.Eigen();
             //std::cout<<"EulerAngle:  "<<EulerAngle_T(0,0)<<"  "<<EulerAngle_T(1,0)<<"  "<<EulerAngle_T(2,0)<<"  "<<std::endl;
 
-            if (icp.getFitnessScore() < 0.1)
+            if (icp.getFitnessScore() < 0.2){
                 fout << frame_count - 100000 << " " << icp.getFitnessScore() << " " << Final_Calib_T(0, 3) << " " << Final_Calib_T(1, 3) << " " << Final_Calib_T(2, 3) << " " << EulerAngle_T(0, 0) << " " << EulerAngle_T(1, 0) << " " << EulerAngle_T(2, 0) << endl; //x,y,z,roll,pitch,yaw
-        }
+            }
+                
+        //}
 
         frame_count++;
         cframe_count++;
@@ -264,6 +283,7 @@ int main()
         if (cframe_count == framenumbers)
         {
             std::cout << "\n Matching complete." << std::endl;
+            std::cout << Final_Calib_T << std::endl;
             break;
         }
     }
